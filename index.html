@@ -2,7 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 加入符合行動裝置的 viewport 設定，強制禁止縮放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>蔬菜大戰菜蟲</title>
     <style>
         body, html {
@@ -11,146 +12,155 @@
             overflow: hidden;
             background-color: #333;
             font-family: sans-serif;
+            width: 100%;
+            height: 100%;
         }
 
+        /* 遊戲主容器：改為全螢幕，適應手機橫向寬高 */
         #game-container {
             position: relative;
-            width: 800px;
-            height: 600px;
-            margin: 20px auto;
-            border: 2px solid #111;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
             overflow: hidden;
             /* 這裡可替換成你的純背景圖片（例如草地） */
             background-color: #8D6E63; 
         }
 
-        /* 頂部選擇區 */
+        /* 頂部選擇區：改為百分比寬度與固定高度 */
         #ui-bar {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 80px;
+            height: 15vh; /* 佔據螢幕高度的 15% */
             background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 2vw;
             z-index: 100;
             box-sizing: border-box;
         }
 
         .select-btn {
-            width: 60px;
-            height: 60px;
+            height: 11vh; /* 隨螢幕高度縮放 */
+            width: 11vh;  /* 保持正方形 */
             cursor: pointer;
-            border: 3px solid #fff;
+            border: 2px solid #fff;
             border-radius: 8px;
             color: white;
             font-size: 12px;
             text-align: center;
-            line-height: 60px;
-            margin-right: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 2vw;
             /* 可在此填入按鈕的去背圖 */
             background-color: #4CAF50; 
         }
         .select-btn:hover { border-color: #FFEB3B; }
 
-        #score-display { color: white; font-size: 24px; font-weight: bold; margin-right: auto; }
-        #btn-next { background-color: #FF9800; display: none; width: auto; padding: 0 20px; font-size: 16px; }
+        #score-display { color: white; font-size: 4vh; font-weight: bold; margin-right: auto; }
+        #btn-next { background-color: #FF9800; display: none; width: auto; padding: 0 3vw; font-size: 2.5vh; }
 
-        /* 田埔 (4列) */
+        /* 田埔：總共 4 列，平分剩下的 85% 螢幕高度 (每列約 21.25vh) */
         .row {
             position: absolute;
             width: 100%;
-            height: 100px;
+            height: 21.25vh;
             left: 0;
             border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
             cursor: pointer;
+            box-sizing: border-box;
         }
         .row:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .row[data-row="0"] { top: 100px; }
-        .row[data-row="1"] { top: 220px; }
-        .row[data-row="2"] { top: 340px; }
-        .row[data-row="3"] { top: 460px; }
+        
+        /* 動態計算 4 列在 UI Bar (15vh) 底下的絕對位置 */
+        .row[data-row="0"] { top: 15vh; }
+        .row[data-row="1"] { top: 36.25vh; }
+        .row[data-row="2"] { top: 57.5vh; }
+        .row[data-row="3"] { top: 78.75vh; }
 
-        /* ================= 【去背圖片替換區】 ================= */
+        /* ================= 【去背圖片與外觀修正】 ================= */
 
-        /* 通用的圖片控制設定：確保圖片能完美適應框框，且背景必須是 transparent (透明) */
-        /* 蔬菜與菜蟲：確保圖片完美適應且背景透明 */
-        .veg, #ghost-veg, .worm {
-            background-color: transparent !important; /* 強制移除任何色塊背景 */
-            background-size: contain;                 /* 讓圖片等比例縮放放入框框 */
-            background-repeat: no-repeat;             /* 避免圖片重複貼瓷磚 */
-            background-position: center;              /* 圖片置中 */
+        /* 蔬菜與菜蟲：尺寸改用 vh 等比例縮放，確保在各手機上大小適中 */
+        .veg, #ghost-veg {
+            position: absolute;
+            width: 15vh;  /* 依螢幕高度縮放 */
+            height: 15vh; 
+            top: 3.1vh;   /* 在 21.25vh 的列中垂直置中 */
+            background-color: transparent !important;
+            background-size: contain;                 
+            background-repeat: no-repeat;             
+            background-position: center;              
+            transition: transform 0.1s;
         }
 
         /* 1. 游標跟隨的半透明蔬菜 */
         #ghost-veg {
-            position: absolute;
-            width: 70px;
-            height: 70px;
+            width: 15vh;
+            height: 15vh;
             pointer-events: none;
             opacity: 0.6;
             display: none;
             z-index: 200;
             transform: translate(-50%, -50%);
+            top: 0; /* 跟隨游標時解除置中 top */
             /* 請替換成你的蔬菜去背圖路徑 (例: veg_idle.png) */
             background-image: url('veg_idle.png'); 
         }
 
         /* 2. 畫面上放置的蔬菜（一般待機狀態） */
         .veg {
-            position: absolute;
-            width: 70px;
-            height: 70px;
-            top: 15px;
             /* 請替換成你的蔬菜去背圖路徑 (例: veg_idle.png) */
             background-image: url('veg_idle.png'); 
-            transition: transform 0.1s;
         }
 
         /* 3. 蔬菜攻擊時的外觀切換 (張嘴) */
         .veg.attacking {
             /* 請替換成你的蔬菜張嘴去背圖路徑 (例: veg_attack.png) */
             background-image: url('veg_attack.png'); 
-            transform: scale(1.1); /* 稍微放大增加攻擊動態感 */
+            transform: scale(1.1); 
         }
 
-        /* 種子 (子彈) 的特殊處理：預設保留黃色色塊，若有圖片則會覆蓋色塊 */
+        /* 4. 種子 (子彈) */
         .seed {
             position: absolute;
-            width: 15px;
-            height: 15px;
-            top: 42px;
+            width: 3vh;
+            height: 3vh;
+            top: 9.1vh; /* 種子置中高度 */
             border-radius: 50%;
-            background-color: #FFEB3B; /* 保留預設黃色色塊，不怕消失 */
+            background-color: #FFEB3B; 
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
             /* 當你有種子去背圖時，把下面這行的註解拿掉即可覆蓋黃色色塊 */
             /* background-image: url('seed.png'); */ 
+            z-index: 50;
         }
 
-        /* 5. 菜蟲實體與蠕動動畫 (兩張去背圖片循環切換) */
+        /* 5. 菜蟲實體與蠕動動畫 */
         @keyframes wormCrawl {
             0%, 49% { 
-                /* 動作1：請替換成你的菜蟲第一張去背圖路徑 (例: worm_frame1.png) */
                 background-image: url('worm_frame1.png'); 
                 transform: scaleY(1);
             }
             50%, 100% { 
-                /* 動作2：請替換成你的菜蟲第二張去背圖路徑 (例: worm_frame2.png) */
                 background-image: url('worm_frame2.png'); 
-                transform: scaleY(0.95); /* 稍微壓縮模擬蠕動 */
+                transform: scaleY(0.95); 
             }
         }
 
         .worm {
             position: absolute;
-            width: 60px;
-            height: 50px;
-            top: 25px;
-            animation: wormCrawl 0.6s infinite; /* 執行上面的循環動畫 */
+            width: 13vh;
+            height: 11vh;
+            top: 5.1vh; /* 菜蟲置中高度 */
+            animation: wormCrawl 0.6s infinite; 
+            background-color: transparent !important;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
             z-index: 60;
         }
     </style>
@@ -172,7 +182,6 @@
 </div>
 
 <script>
-    // ... (這裡保留原本所有的 JavaScript 遊戲邏輯，完全不需變動) ...
     const gameContainer = document.getElementById('game-container');
     const ghostVeg = document.getElementById('ghost-veg');
     const rowsElements = document.querySelectorAll('.row');
@@ -182,19 +191,40 @@
 
     let selected = false; let veggies = []; let worms = []; let seeds = [];
     const gridState = { 0: 0, 1: 0, 2: 0, 3: 0 };
-    const maxVeggiesPerRow = 3; const vegWidthSpacing = 80;
+    const maxVeggiesPerRow = 3;
+    
+    // 改用寬度百分比或動態計算寬度間距
+    let vegWidthSpacing, startXPos, screenWidth;
+
+    // 動態計算寬度基礎數值（適應不同手機寬度）
+    function updateScreenDimensions() {
+        screenWidth = gameContainer.clientWidth;
+        // 蔬菜間距與起點改用螢幕高度比例，確保不會因為螢幕太寬而顯得太密
+        const viewHeight = gameContainer.clientHeight;
+        vegWidthSpacing = viewHeight * 0.18; // 每個蔬菜間隔 18vh
+        startXPos = viewHeight * 0.05;       // 最左邊留白 5vh
+    }
+    updateScreenDimensions();
+    window.addEventListener('resize', updateScreenDimensions);
+
     let score = 0; const targetScore = 3;
 
-    document.addEventListener('mousemove', (e) => {
+    // 游標與手指觸控跟隨邏輯
+    document.addEventListener('mousemove', (e) => { updateGhostPosition(e.clientX, e.clientY); });
+    document.addEventListener('touchmove', (e) => { 
+        if(e.touches.length > 0) updateGhostPosition(e.touches[0].clientX, e.touches[0].clientY); 
+    });
+
+    function updateGhostPosition(clientX, clientY) {
         if (selected) {
             const rect = gameContainer.getBoundingClientRect();
-            if(e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom){
+            if(clientX > rect.left && clientX < rect.right && clientY > rect.top && clientY < rect.bottom){
                 ghostVeg.style.display = 'block';
-                ghostVeg.style.left = (e.clientX - rect.left) + 'px';
-                ghostVeg.style.top = (e.clientY - rect.top) + 'px';
+                ghostVeg.style.left = (clientX - rect.left) + 'px';
+                ghostVeg.style.top = (clientY - rect.top) + 'px';
             } else { ghostVeg.style.display = 'none'; }
         }
-    });
+    }
 
     btnVeg.addEventListener('click', (e) => { e.stopPropagation(); selected = true; });
 
@@ -212,7 +242,7 @@
     function placeVegetable(rowIndex, colIndex, rowDOM) {
         const vegEl = document.createElement('div');
         vegEl.classList.add('veg');
-        const xPos = 20 + (colIndex * vegWidthSpacing); 
+        const xPos = startXPos + (colIndex * vegWidthSpacing); 
         vegEl.style.left = xPos + 'px';
         rowDOM.appendChild(vegEl);
         veggies.push({ row: rowIndex, x: xPos, el: vegEl, lastShootTime: 0 });
@@ -223,7 +253,8 @@
         const rowDOM = document.querySelector(`.row[data-row="${randomRow}"]`);
         const wormEl = document.createElement('div');
         wormEl.classList.add('worm');
-        const startX = 800; wormEl.style.left = startX + 'px';
+        const startX = screenWidth; // 從當前螢幕最右側出發
+        wormEl.style.left = startX + 'px';
         rowDOM.appendChild(wormEl);
         worms.push({ row: randomRow, x: startX, hp: 3, el: wormEl });
     }
@@ -231,10 +262,15 @@
     function shoot(veg) {
         const seedEl = document.createElement('div');
         seedEl.classList.add('seed');
-        const seedStartX = veg.x + 60; seedEl.style.left = seedStartX + 'px';
+        // 種子起始位置為蔬菜的右側（加上蔬菜寬度，換算約 15vh）
+        const viewHeight = gameContainer.clientHeight;
+        const seedStartX = veg.x + (viewHeight * 0.13); 
+        seedEl.style.left = seedStartX + 'px';
+        
         const rowDOM = document.querySelector(`.row[data-row="${veg.row}"]`);
         rowDOM.appendChild(seedEl);
         seeds.push({ row: veg.row, x: seedStartX, el: seedEl });
+        
         veg.el.classList.add('attacking');
         setTimeout(() => { veg.el.classList.remove('attacking'); }, 200);
     }
@@ -248,10 +284,17 @@
     let lastTime = performance.now();
     function gameLoop(time) {
         const deltaTime = time - lastTime; lastTime = time;
+        const viewHeight = gameContainer.clientHeight;
+
+        // 移動與碰撞改用螢幕比例微調速度，確保不同解析度下體感速度一致
+        const wormSpeed = screenWidth * 0.0008; 
+        const seedSpeed = screenWidth * 0.006;   
+        const hitDistance = viewHeight * 0.06;   
 
         worms.forEach((worm, index) => {
-            worm.x -= 0.5; worm.el.style.left = worm.x + 'px';
-            if (worm.x < -50) { worm.el.remove(); worms.splice(index, 1); }
+            worm.x -= wormSpeed; 
+            worm.el.style.left = worm.x + 'px';
+            if (worm.x < -100) { worm.el.remove(); worms.splice(index, 1); }
         });
 
         veggies.forEach(veg => {
@@ -262,17 +305,18 @@
         });
 
         seeds.forEach((seed, sIndex) => {
-            seed.x += 4; seed.el.style.left = seed.x + 'px';
-            if (seed.x > 800) { seed.el.remove(); seeds.splice(sIndex, 1); return; }
+            seed.x += seedSpeed; 
+            seed.el.style.left = seed.x + 'px';
+            if (seed.x > screenWidth) { seed.el.remove(); seeds.splice(sIndex, 1); return; }
 
             for (let wIndex = 0; wIndex < worms.length; wIndex++) {
                 const worm = worms[wIndex];
-                if (seed.row === worm.row && Math.abs(seed.x - worm.x) < 30) {
+                if (seed.row === worm.row && Math.abs(seed.x - worm.x) < hitDistance) {
                     worm.hp -= 1; seed.el.remove(); seeds.splice(sIndex, 1);
                     if (worm.hp <= 0) {
                         worm.el.remove(); worms.splice(wIndex, 1);
                         score++; scoreDisplay.innerText = "分數: " + score;
-                        if (score >= targetScore) { btnNext.style.display = 'block'; }
+                        if (score >= targetScore) { btnNext.style.display = 'flex'; }
                     }
                     break;
                 }
