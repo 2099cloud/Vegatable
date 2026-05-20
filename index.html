@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蔬菜大戰菜蟲</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            font-family: sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+            border: 2px solid #111;
+            overflow: hidden;
+            /* 這裡可替換成你的純背景圖片（例如草地） */
+            background-color: #8D6E63; 
+        }
+
+        /* 頂部選擇區 */
+        #ui-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .select-btn {
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            border: 3px solid #fff;
+            border-radius: 8px;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            line-height: 60px;
+            margin-right: 20px;
+            /* 可在此填入按鈕的去背圖 */
+            background-color: #4CAF50; 
+        }
+        .select-btn:hover { border-color: #FFEB3B; }
+
+        #score-display { color: white; font-size: 24px; font-weight: bold; margin-right: auto; }
+        #btn-next { background-color: #FF9800; display: none; width: auto; padding: 0 20px; font-size: 16px; }
+
+        /* 田埔 (4列) */
+        .row {
+            position: absolute;
+            width: 100%;
+            height: 100px;
+            left: 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+        }
+        .row:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .row[data-row="0"] { top: 100px; }
+        .row[data-row="1"] { top: 220px; }
+        .row[data-row="2"] { top: 340px; }
+        .row[data-row="3"] { top: 460px; }
+
+        /* ================= 【去背圖片替換區】 ================= */
+
+        /* 通用的圖片控制設定：確保圖片能完美適應框框，且背景必須是 transparent (透明) */
+        /* 蔬菜與菜蟲：確保圖片完美適應且背景透明 */
+        .veg, #ghost-veg, .worm {
+            background-color: transparent !important; /* 強制移除任何色塊背景 */
+            background-size: contain;                 /* 讓圖片等比例縮放放入框框 */
+            background-repeat: no-repeat;             /* 避免圖片重複貼瓷磚 */
+            background-position: center;              /* 圖片置中 */
+        }
+
+        /* 1. 游標跟隨的半透明蔬菜 */
+        #ghost-veg {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            pointer-events: none;
+            opacity: 0.6;
+            display: none;
+            z-index: 200;
+            transform: translate(-50%, -50%);
+            /* 請替換成你的蔬菜去背圖路徑 (例: veg_idle.png) */
+            background-image: url('veg_idle.png'); 
+        }
+
+        /* 2. 畫面上放置的蔬菜（一般待機狀態） */
+        .veg {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            top: 15px;
+            /* 請替換成你的蔬菜去背圖路徑 (例: veg_idle.png) */
+            background-image: url('veg_idle.png'); 
+            transition: transform 0.1s;
+        }
+
+        /* 3. 蔬菜攻擊時的外觀切換 (張嘴) */
+        .veg.attacking {
+            /* 請替換成你的蔬菜張嘴去背圖路徑 (例: veg_attack.png) */
+            background-image: url('veg_attack.png'); 
+            transform: scale(1.1); /* 稍微放大增加攻擊動態感 */
+        }
+
+        /* 種子 (子彈) 的特殊處理：預設保留黃色色塊，若有圖片則會覆蓋色塊 */
+        .seed {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            top: 42px;
+            border-radius: 50%;
+            background-color: #FFEB3B; /* 保留預設黃色色塊，不怕消失 */
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            /* 當你有種子去背圖時，把下面這行的註解拿掉即可覆蓋黃色色塊 */
+            /* background-image: url('seed.png'); */ 
+        }
+
+        /* 5. 菜蟲實體與蠕動動畫 (兩張去背圖片循環切換) */
+        @keyframes wormCrawl {
+            0%, 49% { 
+                /* 動作1：請替換成你的菜蟲第一張去背圖路徑 (例: worm_frame1.png) */
+                background-image: url('worm_frame1.png'); 
+                transform: scaleY(1);
+            }
+            50%, 100% { 
+                /* 動作2：請替換成你的菜蟲第二張去背圖路徑 (例: worm_frame2.png) */
+                background-image: url('worm_frame2.png'); 
+                transform: scaleY(0.95); /* 稍微壓縮模擬蠕動 */
+            }
+        }
+
+        .worm {
+            position: absolute;
+            width: 60px;
+            height: 50px;
+            top: 25px;
+            animation: wormCrawl 0.6s infinite; /* 執行上面的循環動畫 */
+            z-index: 60;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui-bar">
+        <div class="select-btn" id="btn-veg">選蔬菜</div>
+        <div id="score-display">分數: 0</div>
+        <div class="select-btn" id="btn-next">下一關</div>
+    </div>
+
+    <div id="ghost-veg"></div>
+    <div class="row" data-row="0"></div>
+    <div class="row" data-row="1"></div>
+    <div class="row" data-row="2"></div>
+    <div class="row" data-row="3"></div>
+</div>
+
+<script>
+    // ... (這裡保留原本所有的 JavaScript 遊戲邏輯，完全不需變動) ...
+    const gameContainer = document.getElementById('game-container');
+    const ghostVeg = document.getElementById('ghost-veg');
+    const rowsElements = document.querySelectorAll('.row');
+    const btnVeg = document.getElementById('btn-veg');
+    const scoreDisplay = document.getElementById('score-display');
+    const btnNext = document.getElementById('btn-next');
+
+    let selected = false; let veggies = []; let worms = []; let seeds = [];
+    const gridState = { 0: 0, 1: 0, 2: 0, 3: 0 };
+    const maxVeggiesPerRow = 3; const vegWidthSpacing = 80;
+    let score = 0; const targetScore = 3;
+
+    document.addEventListener('mousemove', (e) => {
+        if (selected) {
+            const rect = gameContainer.getBoundingClientRect();
+            if(e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom){
+                ghostVeg.style.display = 'block';
+                ghostVeg.style.left = (e.clientX - rect.left) + 'px';
+                ghostVeg.style.top = (e.clientY - rect.top) + 'px';
+            } else { ghostVeg.style.display = 'none'; }
+        }
+    });
+
+    btnVeg.addEventListener('click', (e) => { e.stopPropagation(); selected = true; });
+
+    rowsElements.forEach(row => {
+        row.addEventListener('click', (e) => {
+            if (!selected) return;
+            const rowIndex = parseInt(row.getAttribute('data-row'));
+            if (gridState[rowIndex] < maxVeggiesPerRow) {
+                placeVegetable(rowIndex, gridState[rowIndex], row);
+                gridState[rowIndex]++; selected = false; ghostVeg.style.display = 'none';
+            } else { alert("這列已經放滿3個蔬菜囉！"); }
+        });
+    });
+
+    function placeVegetable(rowIndex, colIndex, rowDOM) {
+        const vegEl = document.createElement('div');
+        vegEl.classList.add('veg');
+        const xPos = 20 + (colIndex * vegWidthSpacing); 
+        vegEl.style.left = xPos + 'px';
+        rowDOM.appendChild(vegEl);
+        veggies.push({ row: rowIndex, x: xPos, el: vegEl, lastShootTime: 0 });
+    }
+
+    function spawnWorm() {
+        const randomRow = Math.floor(Math.random() * 4);
+        const rowDOM = document.querySelector(`.row[data-row="${randomRow}"]`);
+        const wormEl = document.createElement('div');
+        wormEl.classList.add('worm');
+        const startX = 800; wormEl.style.left = startX + 'px';
+        rowDOM.appendChild(wormEl);
+        worms.push({ row: randomRow, x: startX, hp: 3, el: wormEl });
+    }
+
+    function shoot(veg) {
+        const seedEl = document.createElement('div');
+        seedEl.classList.add('seed');
+        const seedStartX = veg.x + 60; seedEl.style.left = seedStartX + 'px';
+        const rowDOM = document.querySelector(`.row[data-row="${veg.row}"]`);
+        rowDOM.appendChild(seedEl);
+        seeds.push({ row: veg.row, x: seedStartX, el: seedEl });
+        veg.el.classList.add('attacking');
+        setTimeout(() => { veg.el.classList.remove('attacking'); }, 200);
+    }
+
+    btnNext.addEventListener('click', () => {
+        const dataToReturn = score.toString(); 
+        if (window.AppInventor) { window.AppInventor.setWebViewString(dataToReturn); } 
+        else { alert("已完成關卡！準備回傳分數：" + dataToReturn); }
+    });
+
+    let lastTime = performance.now();
+    function gameLoop(time) {
+        const deltaTime = time - lastTime; lastTime = time;
+
+        worms.forEach((worm, index) => {
+            worm.x -= 0.5; worm.el.style.left = worm.x + 'px';
+            if (worm.x < -50) { worm.el.remove(); worms.splice(index, 1); }
+        });
+
+        veggies.forEach(veg => {
+            const wormsInRow = worms.filter(w => w.row === veg.row && w.x > veg.x);
+            if (wormsInRow.length > 0) {
+                if (time - veg.lastShootTime > 1500) { shoot(veg); veg.lastShootTime = time; }
+            }
+        });
+
+        seeds.forEach((seed, sIndex) => {
+            seed.x += 4; seed.el.style.left = seed.x + 'px';
+            if (seed.x > 800) { seed.el.remove(); seeds.splice(sIndex, 1); return; }
+
+            for (let wIndex = 0; wIndex < worms.length; wIndex++) {
+                const worm = worms[wIndex];
+                if (seed.row === worm.row && Math.abs(seed.x - worm.x) < 30) {
+                    worm.hp -= 1; seed.el.remove(); seeds.splice(sIndex, 1);
+                    if (worm.hp <= 0) {
+                        worm.el.remove(); worms.splice(wIndex, 1);
+                        score++; scoreDisplay.innerText = "分數: " + score;
+                        if (score >= targetScore) { btnNext.style.display = 'block'; }
+                    }
+                    break;
+                }
+            }
+        });
+        requestAnimationFrame(gameLoop);
+    }
+
+    setInterval(spawnWorm, 3000);
+    requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
