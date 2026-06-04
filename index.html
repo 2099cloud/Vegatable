@@ -2,9 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <!-- 加入符合行動裝置的 viewport 設定，強制禁止縮放 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>蔬菜大戰菜蟲</title>
+    <title>蔬菜大戰菜蟲-終極版</title>
     <style>
         body, html {
             margin: 0;
@@ -14,27 +13,26 @@
             font-family: sans-serif;
             width: 100%;
             height: 100%;
+            user-select: none;
         }
 
-        /* 遊戲主容器：改為全螢幕，適應手機橫向寬高 */
         #game-container {
             position: relative;
             width: 100vw;
             height: 100vh;
             margin: 0;
             overflow: hidden;
-            /* 這裡可替換成你的純背景圖片（例如草地） */
             background-color: #8D6E63; 
         }
 
-        /* 頂部選擇區：改為百分比寬度與固定高度 */
+        /* 頂部狀態列 */
         #ui-bar {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 15vh; /* 佔據螢幕高度的 15% */
-            background-color: rgba(0, 0, 0, 0.5);
+            height: 15vh;
+            background-color: rgba(0, 0, 0, 0.6);
             display: flex;
             align-items: center;
             padding: 0 2vw;
@@ -42,139 +40,218 @@
             box-sizing: border-box;
         }
 
+        /* 頂部蔬菜選擇按鈕 */
         .select-btn {
-            height: 11vh; /* 隨螢幕高度縮放 */
-            width: 11vh;  /* 保持正方形 */
+            height: 12vh;
+            width: 12vh;
             cursor: pointer;
             border: 2px solid #fff;
             border-radius: 8px;
             color: white;
-            font-size: 12px;
+            font-size: 11px;
+            font-weight: bold;
             text-align: center;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin-right: 2vw;
-            /* 可在此填入按鈕的去背圖 */
-            background-color: #4CAF50; 
+            margin-right: 1vw;
+            box-sizing: border-box;
         }
-        .select-btn:hover { border-color: #FFEB3B; }
+        .select-btn.active { border-color: #FFEB3B; background-color: #388E3C !important; }
 
-        #score-display { color: white; font-size: 4vh; font-weight: bold; margin-right: auto; }
-        #btn-next { background-color: #FF9800; display: none; width: auto; padding: 0 3vw; font-size: 2.5vh; }
+        /* 狀態文字顯示 */
+        .info-text { color: #FFF; font-size: 3vh; font-weight: bold; margin-left: 2vw; white-space: nowrap;}
+        #btn-next { background-color: #FF9800; display: none; width: auto; padding: 0 3vw; font-size: 2.5vh; margin-left: auto;}
 
-        /* 田埔：總共 4 列，平分剩下的 85% 螢幕高度 (每列約 21.25vh) */
+        /* 田埔與網格系統 */
         .row {
             position: absolute;
             width: 100%;
             height: 21.25vh;
             left: 0;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
-            cursor: pointer;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
             box-sizing: border-box;
         }
-        .row:hover { background-color: rgba(255, 255, 255, 0.1); }
-        
-        /* 動態計算 4 列在 UI Bar (15vh) 底下的絕對位置 */
         .row[data-row="0"] { top: 15vh; }
         .row[data-row="1"] { top: 36.25vh; }
         .row[data-row="2"] { top: 57.5vh; }
         .row[data-row="3"] { top: 78.75vh; }
 
-        /* ================= 【去背圖片與外觀修正】 ================= */
+        .grid-cell {
+            position: absolute;
+            width: 7.14%; 
+            height: 100%;
+            border-right: 1px dashed rgba(255, 255, 255, 0.15);
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grid-cell:hover { background-color: rgba(255, 255, 255, 0.1); }
 
-        /* 蔬菜與菜蟲：尺寸改用 vh 等比例縮放，確保在各手機上大小適中 */
+        /* 通用基底 */
         .veg, #ghost-veg {
             position: absolute;
-            width: 15vh;  /* 依螢幕高度縮放 */
-            height: 15vh; 
-            top: 3.1vh;   /* 在 21.25vh 的列中垂直置中 */
-            background-color: transparent !important;
-            background-size: contain;                 
-            background-repeat: no-repeat;             
-            background-position: center;              
-            transition: transform 0.1s;
+            width: 14vh;
+            height: 14vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8vh;
+            font-weight: bold;
+            color: #fff;
+            border-radius: 12px;
+            text-shadow: 1px 1px 2px #000;
+            box-sizing: border-box;
+            z-index: 50;
         }
 
-        /* 1. 游標跟隨的半透明蔬菜 */
         #ghost-veg {
-            width: 15vh;
-            height: 15vh;
             pointer-events: none;
             opacity: 0.6;
             display: none;
             z-index: 200;
             transform: translate(-50%, -50%);
-            top: 0; /* 跟隨游標時解除置中 top */
-            /* 請替換成你的蔬菜去背圖路徑 (例: veg_idle.png) */
-            background-image: url('veg_idle.png'); 
         }
 
-        /* 2. 畫面上放置的蔬菜（一般待機狀態） */
-        .veg {
-            /* 請替換成你的蔬菜去背圖路徑 (例: veg_idle.png) */
-            background-image: url('veg_idle.png'); 
-        }
-
-        /* 3. 蔬菜攻擊時的外觀切換 (張嘴) */
-        .veg.attacking {
-            /* 請替換成你的蔬菜張嘴去背圖路徑 (例: veg_attack.png) */
-            background-image: url('veg_attack.png'); 
-            transform: scale(1.1); 
-        }
-
-        /* 4. 種子 (子彈) */
-        .seed {
-            position: absolute;
-            width: 3vh;
-            height: 3vh;
-            top: 9.1vh; /* 種子置中高度 */
-            border-radius: 50%;
-            background-color: #FFEB3B; 
+        /* 👑【蔬菜圖片樣式全面改造區】 */
+        .type-pumpkin {
+            background-color: transparent !important;
+            border: none !important;
+            text-shadow: none !important;
+            background-image: url('pumpkin_idle.png'); 
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            /* 當你有種子去背圖時，把下面這行的註解拿掉即可覆蓋黃色色塊 */
-            /* background-image: url('seed.png'); */ 
-            z-index: 50;
+        }
+        .type-tomato {
+            background-color: transparent !important;
+            border: none !important;
+            text-shadow: none !important;
+            background-image: url('tomato_idle.png'); 
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .type-pepper {
+            background-color: transparent !important;
+            border: none !important;
+            text-shadow: none !important;
+            background-image: url('pepper_idle.png'); 
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .type-okra {
+            background-color: transparent !important;
+            border: none !important;
+            text-shadow: none !important;
+            background-image: url('okra_idle.png'); 
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .type-onion {
+            background-color: transparent !important;
+            border: none !important;
+            text-shadow: none !important;
+            background-image: url('onion_idle.png'); 
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .type-cabbage {
+            background-color: transparent !important;
+            border: none !important;
+            text-shadow: none !important;
+            background-image: url('veg_idle.png'); 
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
         }
 
-        /* 5. 菜蟲實體與蠕動動畫 */
+        .nutrient-drop {
+            position: absolute;
+            width: 6vh;
+            height: 6vh;
+            background-color: #FFEB3B;
+            border: 2px solid #FFF;
+            border-radius: 50%;
+            z-index: 80;
+            cursor: pointer;
+            animation: bounce 1s infinite alternate;
+        }
+        @keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-10px); } }
+
+        .slow-puddle {
+            position: absolute;
+            width: 14vh;
+            height: 6vh;
+            background-color: rgba(76, 175, 80, 0.4);
+            border-radius: 50%;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .seed {
+            position: absolute;
+            width: 2.5vh;
+            height: 2.5vh;
+            border-radius: 50%;
+            background-color: #FFEB3B;
+            z-index: 45;
+        }
+
         @keyframes wormCrawl {
-            0%, 49% { 
-                background-image: url('worm_frame1.png'); 
-                transform: scaleY(1);
-            }
-            50%, 100% { 
-                background-image: url('worm_frame2.png'); 
-                transform: scaleY(0.95); 
-            }
+            0%, 49% { background-image: url('worm_frame1.png'); transform: scaleY(1); }
+            50%, 100% { background-image: url('worm_frame2.png'); transform: scaleY(0.93); }
         }
-
         .worm {
             position: absolute;
             width: 13vh;
-            height: 11vh;
-            top: 5.1vh; /* 菜蟲置中高度 */
-            animation: wormCrawl 0.6s infinite; 
+            height: 10vh;
+            animation: wormCrawl 0.5s infinite;
             background-color: transparent !important;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
             z-index: 60;
+            transition: filter 0.2s;
         }
+        .worm.frozen { filter: hue-rotate(90deg) brightness(1.3); } 
+
+        .hp-bar {
+            position: absolute;
+            top: -1vh;
+            width: 80%;
+            height: 0.8vh;
+            background-color: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .hp-fill { height: 100%; background-color: #00E676; width: 100%; transition: width 0.1s;}
     </style>
 </head>
 <body>
 
 <div id="game-container">
     <div id="ui-bar">
-        <div class="select-btn" id="btn-veg">選蔬菜</div>
-        <div id="score-display">分數: 0</div>
-        <div class="select-btn" id="btn-next">下一關</div>
+        <div class="select-btn" id="card-pumpkin" style="background-color:#E65100;"></div>
+        <div class="select-btn" id="card-cabbage" style="background-color:#2E7D32;"></div>
+        <div class="select-btn" id="card-tomato" style="background-color:#D50000;"></div>
+        <div class="select-btn" id="card-pepper" style="background-color:#1B5E20;"></div>
+        <div class="select-btn" id="card-okra" style="background-color:#9E9D24;"></div>
+        <div class="select-btn" id="card-onion" style="background-color:#9C27B0;"></div>
+        
+        <div class="info-text" id="txt-score">分數: 0 / 100</div>
+        <div class="info-text" id="txt-nutrient">養分: 150</div>
+        
+        <div class="select-btn" id="btn-next">結束關卡</div>
     </div>
 
     <div id="ghost-veg"></div>
+
     <div class="row" data-row="0"></div>
     <div class="row" data-row="1"></div>
     <div class="row" data-row="2"></div>
@@ -182,150 +259,424 @@
 </div>
 
 <script>
+    // =========================================================================
+    // ⭐【遊戲平衡核心設定區】
+    // =========================================================================
+    const INIT_NUTRIENT = 150;        
+    const TARGET_SCORE = 100;         
+    const WORM_SPAWN_COOLDOWN = 3500; 
+
+    // 將 name 全部清空避免蓋在圖片上方，且保留給 UI 渲染用
+    const VEG_BALANCING = {
+        pumpkin: { name: '', cost: 25, maxHp: 40, class: 'type-pumpkin' },
+        cabbage: { name: '', cost: 12, maxHp: 10, produceAmount: 3, produceCooldown: 5000, class: 'type-cabbage' },
+        tomato: { name: '', cost: 25, maxHp: 12, class: 'type-tomato' },
+        pepper: { name: '', cost: 25, maxHp: 7, attackPower: 1, attackCooldown: 1500, class: 'type-pepper' },
+        okra: { name: '', cost: 35, maxHp: 8, puddleDuration: 8000, class: 'type-okra' },
+        onion: { name: '', cost: 50, maxHp: 6, freezeDuration: 3000, class: 'type-onion' }
+    };
+
+    const WORM_BALANCING = {
+        maxHp: 3,            
+        attackPower: 2,      
+        killRewardScore: 10  
+    };
+
+    // =========================================================================
+    // 【核心邏輯區】
+    // =========================================================================
     const gameContainer = document.getElementById('game-container');
     const ghostVeg = document.getElementById('ghost-veg');
     const rowsElements = document.querySelectorAll('.row');
-    const btnVeg = document.getElementById('btn-veg');
-    const scoreDisplay = document.getElementById('score-display');
+    const txtScore = document.getElementById('txt-score');
+    const txtNutrient = document.getElementById('txt-nutrient');
     const btnNext = document.getElementById('btn-next');
 
-    let selected = false; let veggies = []; let worms = []; let seeds = [];
-    const gridState = { 0: 0, 1: 0, 2: 0, 3: 0 };
-    const maxVeggiesPerRow = 3;
+    let selectedType = null; 
+    let veggies = []; 
+    let worms = [];   
+    let seeds = [];   
+    let puddles = []; 
+    let nutrients = []; 
     
-    // 改用寬度百分比或動態計算寬度間距
-    let vegWidthSpacing, startXPos, screenWidth;
+    let score = 0;
+    let nutrientCount = INIT_NUTRIENT; 
+    let gameState = 'PLAYING'; 
+    let gameResult = 0; 
+    let screenWidth, cellWidth;
 
-    // 動態計算寬度基礎數值（適應不同手機寬度）
-    function updateScreenDimensions() {
-        screenWidth = gameContainer.clientWidth;
-        // 蔬菜間距與起點改用螢幕高度比例，確保不會因為螢幕太寬而顯得太密
-        const viewHeight = gameContainer.clientHeight;
-        vegWidthSpacing = viewHeight * 0.18; // 每個蔬菜間隔 18vh
-        startXPos = viewHeight * 0.05;       // 最左邊留白 5vh
+    function renderUI() {
+        txtScore.innerText = `分數: 0 / ${TARGET_SCORE}`;
+        txtNutrient.innerText = `養分: ${nutrientCount}`;
+        
+        // 用靜態字串對應 UI 卡片名稱，不和畫面上的圖片文字衝突
+        const cardNames = {
+            pumpkin: '南瓜',
+            cabbage: '高麗菜',
+            tomato: '番茄',
+            pepper: '青椒',
+            okra: '秋葵',
+            onion: '洋蔥'
+        };
+
+        Object.keys(VEG_BALANCING).forEach(type => {
+            const card = document.getElementById(`card-${type}`);
+            if(card) {
+                const displayName = cardNames[type];
+                card.innerHTML = `${displayName}<br>(${VEG_BALANCING[type].cost})`;
+            }
+        });
     }
-    updateScreenDimensions();
-    window.addEventListener('resize', updateScreenDimensions);
 
-    let score = 0; const targetScore = 3;
+    function initGrid() {
+        screenWidth = gameContainer.clientWidth;
+        cellWidth = (screenWidth * 0.5) / 7;
 
-    // 游標與手指觸控跟隨邏輯
-    document.addEventListener('mousemove', (e) => { updateGhostPosition(e.clientX, e.clientY); });
-    document.addEventListener('touchmove', (e) => { 
-        if(e.touches.length > 0) updateGhostPosition(e.touches[0].clientX, e.touches[0].clientY); 
+        rowsElements.forEach(row => {
+            row.innerHTML = ''; 
+            const rowIndex = parseInt(row.getAttribute('data-row'));
+            for (let col = 0; col < 7; col++) {
+                const cell = document.createElement('div');
+                cell.classList.add('grid-cell');
+                cell.style.width = cellWidth + 'px';
+                cell.style.left = (col * cellWidth) + 'px';
+                cell.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleCellClick(rowIndex, col);
+                });
+                row.appendChild(cell);
+            }
+        });
+    }
+
+    Object.keys(VEG_BALANCING).forEach(type => {
+        document.getElementById(`card-${type}`).addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (gameState !== 'PLAYING') return;
+            
+            if (nutrientCount < VEG_BALANCING[type].cost) {
+                alert("養分不足！");
+                return;
+            }
+            
+            document.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+            selectedType = type;
+            document.getElementById(`card-${type}`).classList.add('active');
+            
+            ghostVeg.className = '';
+            ghostVeg.classList.add('veg', VEG_BALANCING[type].class);
+            ghostVeg.innerText = VEG_BALANCING[type].name;
+        });
     });
 
-    function updateGhostPosition(clientX, clientY) {
-        if (selected) {
+    function handleCellClick(row, col) {
+        if (!selectedType || gameState !== 'PLAYING') return;
+
+        const isOccupied = veggies.some(v => v.row === row && v.col === col);
+        if (isOccupied) {
+            alert("這個格子已經有植物了！");
+            return;
+        }
+
+        nutrientCount -= VEG_BALANCING[selectedType].cost;
+        txtNutrient.innerText = "養分: " + nutrientCount;
+
+        const rowDOM = document.querySelector(`.row[data-row="${row}"]`);
+        const vegEl = document.createElement('div');
+        vegEl.classList.add('veg', VEG_BALANCING[selectedType].class);
+        vegEl.innerText = VEG_BALANCING[selectedType].name;
+        
+        const hpBar = document.createElement('div');
+        hpBar.classList.add('hp-bar');
+        const hpFill = document.createElement('div');
+        hpFill.classList.add('hp-fill');
+        hpBar.appendChild(hpFill);
+        vegEl.appendChild(hpBar);
+
+        const xPos = (col * cellWidth) + (cellWidth / 2) - (gameContainer.clientHeight * 0.07);
+        vegEl.style.left = xPos + 'px';
+        vegEl.style.top = "3.6vh"; 
+        rowDOM.appendChild(vegEl);
+
+        veggies.push({
+            row: row,
+            col: col,
+            x: xPos,
+            type: selectedType,
+            hp: VEG_BALANCING[selectedType].maxHp,
+            maxHp: VEG_BALANCING[selectedType].maxHp,
+            el: vegEl,
+            fillEl: hpFill,
+            lastActionTime: performance.now() 
+        });
+
+        selectedType = null;
+        document.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        ghostVeg.style.display = 'none';
+    }
+
+    document.addEventListener('mousemove', (e) => { updateGhost(e.clientX, e.clientY); });
+    document.addEventListener('touchmove', (e) => { if(e.touches.length > 0) updateGhost(e.touches[0].clientX, e.touches[0].clientY); });
+
+    function updateGhost(mx, my) {
+        if (selectedType) {
             const rect = gameContainer.getBoundingClientRect();
-            if(clientX > rect.left && clientX < rect.right && clientY > rect.top && clientY < rect.bottom){
-                ghostVeg.style.display = 'block';
-                ghostVeg.style.left = (clientX - rect.left) + 'px';
-                ghostVeg.style.top = (clientY - rect.top) + 'px';
+            if(mx > rect.left && mx < rect.right && my > rect.top && my < rect.bottom){
+                ghostVeg.style.display = 'flex';
+                ghostVeg.style.left = (mx - rect.left) + 'px';
+                ghostVeg.style.top = (my - rect.top) + 'px';
             } else { ghostVeg.style.display = 'none'; }
         }
     }
 
-    btnVeg.addEventListener('click', (e) => { e.stopPropagation(); selected = true; });
-
-    rowsElements.forEach(row => {
-        row.addEventListener('click', (e) => {
-            if (!selected) return;
-            const rowIndex = parseInt(row.getAttribute('data-row'));
-            if (gridState[rowIndex] < maxVeggiesPerRow) {
-                placeVegetable(rowIndex, gridState[rowIndex], row);
-                gridState[rowIndex]++; selected = false; ghostVeg.style.display = 'none';
-            } else { alert("這列已經放滿3個蔬菜囉！"); }
-        });
+    document.addEventListener('click', () => {
+        selectedType = null;
+        document.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        ghostVeg.style.display = 'none';
     });
 
-    function placeVegetable(rowIndex, colIndex, rowDOM) {
-        const vegEl = document.createElement('div');
-        vegEl.classList.add('veg');
-        const xPos = startXPos + (colIndex * vegWidthSpacing); 
-        vegEl.style.left = xPos + 'px';
-        rowDOM.appendChild(vegEl);
-        veggies.push({ row: rowIndex, x: xPos, el: vegEl, lastShootTime: 0 });
-    }
-
     function spawnWorm() {
+        if (gameState !== 'PLAYING') return;
         const randomRow = Math.floor(Math.random() * 4);
         const rowDOM = document.querySelector(`.row[data-row="${randomRow}"]`);
+        
         const wormEl = document.createElement('div');
         wormEl.classList.add('worm');
-        const startX = screenWidth; // 從當前螢幕最右側出發
+        const startX = screenWidth;
         wormEl.style.left = startX + 'px';
+        wormEl.style.top = "5.5vh";
         rowDOM.appendChild(wormEl);
-        worms.push({ row: randomRow, x: startX, hp: 3, el: wormEl });
+
+        worms.push({
+            row: randomRow,
+            x: startX,
+            hp: WORM_BALANCING.maxHp,
+            maxSpeed: screenWidth * 0.0007,
+            speed: screenWidth * 0.0007,
+            el: wormEl,
+            freezeTimeout: 0, 
+            lastBiteTime: 0,
+            isDead: false
+        });
     }
 
-    function shoot(veg) {
-        const seedEl = document.createElement('div');
-        seedEl.classList.add('seed');
-        // 種子起始位置為蔬菜的右側（加上蔬菜寬度，換算約 15vh）
-        const viewHeight = gameContainer.clientHeight;
-        const seedStartX = veg.x + (viewHeight * 0.13); 
-        seedEl.style.left = seedStartX + 'px';
+    function checkGameOver(result) {
+        gameState = result === 1 ? 'WIN' : 'GAMEOVER';
+        gameResult = result;
+        btnNext.innerText = result === 1 ? "通關！傳回App" : "失敗！傳回App";
+        btnNext.style.display = 'flex';
         
-        const rowDOM = document.querySelector(`.row[data-row="${veg.row}"]`);
-        rowDOM.appendChild(seedEl);
-        seeds.push({ row: veg.row, x: seedStartX, el: seedEl });
-        
-        veg.el.classList.add('attacking');
-        setTimeout(() => { veg.el.classList.remove('attacking'); }, 200);
+        if(result === 1) {
+            alert(`恭喜通關！獲得 ${TARGET_SCORE} 分！`);
+        } else {
+            alert("守護失敗！菜蟲突破防線了！");
+        }
     }
 
     btnNext.addEventListener('click', () => {
-        const dataToReturn = score.toString(); 
-        if (window.AppInventor) { window.AppInventor.setWebViewString(dataToReturn); } 
-        else { alert("已完成關卡！準備回傳分數：" + dataToReturn); }
+        if (window.AppInventor) { 
+            window.AppInventor.setWebViewString(gameResult.toString()); 
+        } else { 
+            alert("回傳至 App Inventor 的數值為: " + gameResult); 
+        }
     });
 
     let lastTime = performance.now();
+    let lastWormSpawn = 0;
+
     function gameLoop(time) {
-        const deltaTime = time - lastTime; lastTime = time;
+        if (gameState !== 'PLAYING') return;
+        
         const viewHeight = gameContainer.clientHeight;
+        const hitDistance = viewHeight * 0.07;
 
-        // 移動與碰撞改用螢幕比例微調速度，確保不同解析度下體感速度一致
-        const wormSpeed = screenWidth * 0.0008; 
-        const seedSpeed = screenWidth * 0.006;   
-        const hitDistance = viewHeight * 0.06;   
+        // 1. 生成菜蟲
+        if (time - lastWormSpawn > WORM_SPAWN_COOLDOWN) {
+            spawnWorm();
+            lastWormSpawn = time;
+        }
 
-        worms.forEach((worm, index) => {
-            worm.x -= wormSpeed; 
-            worm.el.style.left = worm.x + 'px';
-            if (worm.x < -100) { worm.el.remove(); worms.splice(index, 1); }
-        });
-
-        veggies.forEach(veg => {
-            const wormsInRow = worms.filter(w => w.row === veg.row && w.x > veg.x);
-            if (wormsInRow.length > 0) {
-                if (time - veg.lastShootTime > 1500) { shoot(veg); veg.lastShootTime = time; }
+        // 2. 更新秋葵減速區域
+        puddles.forEach((p, pIdx) => {
+            if (time - p.spawnTime > VEG_BALANCING.okra.puddleDuration) { 
+                p.el.remove();
+                puddles.splice(pIdx, 1);
             }
         });
 
-        seeds.forEach((seed, sIndex) => {
-            seed.x += seedSpeed; 
-            seed.el.style.left = seed.x + 'px';
-            if (seed.x > screenWidth) { seed.el.remove(); seeds.splice(sIndex, 1); return; }
+        // 3. 蔬菜各自特殊行為處理
+        veggies.forEach((veg, vIdx) => {
+            if (veg.type === 'cabbage') {
+                if (time - veg.lastActionTime > VEG_BALANCING.cabbage.produceCooldown) {
+                    createNutrientDrop(veg);
+                    veg.lastActionTime = time;
+                }
+            }
+            if (veg.type === 'pepper') {
+                const targetWorms = worms.filter(w => !w.isDead && w.row === veg.row && w.x > veg.x);
+                if (targetWorms.length > 0 && time - veg.lastActionTime > VEG_BALANCING.pepper.attackCooldown) {
+                    const seedEl = document.createElement('div');
+                    seedEl.classList.add('seed');
+                    const seedStartX = veg.x + (viewHeight * 0.12);
+                    seedEl.style.left = seedStartX + 'px';
+                    seedEl.style.top = "9.1vh";
+                    
+                    document.querySelector(`.row[data-row="${veg.row}"]`).appendChild(seedEl);
+                    seeds.push({ 
+                        row: veg.row, 
+                        x: seedStartX, 
+                        el: seedEl,
+                        power: VEG_BALANCING.pepper.attackPower
+                    });
+                    veg.lastActionTime = time;
+                }
+            }
+        });
 
-            for (let wIndex = 0; wIndex < worms.length; wIndex++) {
-                const worm = worms[wIndex];
-                if (seed.row === worm.row && Math.abs(seed.x - worm.x) < hitDistance) {
-                    worm.hp -= 1; seed.el.remove(); seeds.splice(sIndex, 1);
+        // 4. 移動與碰撞扣血處理
+        worms.forEach((worm) => {
+            if (worm.isDead) return;
+
+            let currentSpeed = 0;
+            if (worm.freezeTimeout > time) {
+                currentSpeed = 0;
+                worm.el.classList.add('frozen');
+            } else {
+                worm.el.classList.remove('frozen');
+                const isInSlow = puddles.some(p => p.row === worm.row && Math.abs(p.x - worm.x) < hitDistance);
+                currentSpeed = isInSlow ? worm.maxSpeed * 0.5 : worm.maxSpeed;
+            }
+
+            // 檢查前方是否有蔬菜擋路
+            const blockingVeg = veggies.find(veg => 
+                worm.row === veg.row && 
+                (worm.x - veg.x) >= 0 && 
+                (worm.x - veg.x) < hitDistance
+            );
+
+            if (blockingVeg) {
+                worm.speed = 0; 
+                if (time - worm.lastBiteTime > 1000) {
+                    blockingVeg.hp -= WORM_BALANCING.attackPower; 
+                    blockingVeg.fillEl.style.width = (blockingVeg.hp / blockingVeg.maxHp * 100) + '%';
+                    worm.lastBiteTime = time;
+
+                    if (blockingVeg.hp <= 0) {
+                        handleVegDeath(blockingVeg);
+                        blockingVeg.el.remove();
+                        veggies = veggies.filter(v => v !== blockingVeg);
+                    }
+                }
+            } else {
+                worm.speed = currentSpeed;
+            }
+
+            worm.x -= worm.speed;
+            worm.el.style.left = worm.x + 'px';
+
+            if (worm.x < 0) {
+                checkGameOver(0);
+                return;
+            }
+        });
+
+        // 5. 子彈更新與擊中判定
+        seeds.forEach((seed, sIndex) => {
+            seed.x += screenWidth * 0.005;
+            seed.el.style.left = seed.x + 'px';
+
+            if (seed.x > screenWidth) {
+                seed.el.remove();
+                seeds.splice(sIndex, 1);
+                return;
+            }
+
+            for (let wIdx = 0; wIdx < worms.length; wIdx++) {
+                const worm = worms[wIdx];
+                if (!worm.isDead && seed.row === worm.row && Math.abs(seed.x - worm.x) < hitDistance) {
+                    worm.hp -= seed.power; 
+                    seed.el.remove();
+                    seeds.splice(sIndex, 1);
+                    
                     if (worm.hp <= 0) {
-                        worm.el.remove(); worms.splice(wIndex, 1);
-                        score++; scoreDisplay.innerText = "分數: " + score;
-                        if (score >= targetScore) { btnNext.style.display = 'flex'; }
+                        handleWormDeath(worm);
                     }
                     break;
                 }
             }
         });
+
+        // 統一在每幀結束時，將死掉的菜蟲真正從陣列中清空，確保安全
+        worms = worms.filter(w => !w.isDead);
+
         requestAnimationFrame(gameLoop);
     }
 
-    setInterval(spawnWorm, 3000);
+    function createNutrientDrop(veg) {
+        const drop = document.createElement('div');
+        drop.classList.add('nutrient-drop');
+        drop.style.left = (veg.x + 10) + 'px';
+        drop.style.top = "1vh";
+        
+        drop.addEventListener('click', (e) => {
+            e.stopPropagation();
+            nutrientCount += VEG_BALANCING.cabbage.produceAmount; 
+            txtNutrient.innerText = "養分: " + nutrientCount;
+            drop.remove();
+            nutrients = nutrients.filter(n => n !== drop);
+        });
+
+        document.querySelector(`.row[data-row="${veg.row}"]`).appendChild(drop);
+        nutrients.push(drop);
+    }
+
+    function handleVegDeath(veg) {
+        const viewHeight = gameContainer.clientHeight;
+        const rowDOM = document.querySelector(`.row[data-row="${veg.row}"]`);
+
+        if (veg.type === 'tomato') {
+            worms.forEach((worm) => {
+                if (!worm.isDead && worm.row === veg.row && Math.abs(worm.x - veg.x) < (viewHeight * 0.25)) {
+                    handleWormDeath(worm);
+                }
+            });
+            rowDOM.style.backgroundColor = "rgba(255,0,0,0.3)";
+            setTimeout(() => rowDOM.style.backgroundColor = "", 300);
+        }
+
+        if (veg.type === 'okra') {
+            const puddle = document.createElement('div');
+            puddle.classList.add('slow-puddle');
+            puddle.style.left = veg.x + 'px';
+            puddle.style.top = "7vh";
+            rowDOM.appendChild(puddle);
+            puddles.push({ row: veg.row, x: veg.x, el: puddle, spawnTime: performance.now() });
+        }
+
+        if (veg.type === 'onion') {
+            worms.forEach(worm => {
+                if (!worm.isDead && worm.row === veg.row && Math.abs(worm.x - veg.x) < (viewHeight * 0.08)) {
+                    worm.freezeTimeout = performance.now() + VEG_BALANCING.onion.freezeDuration; 
+                }
+            });
+        }
+    }
+
+    function handleWormDeath(worm) {
+        if (worm.isDead) return;
+        worm.isDead = true;
+        worm.el.remove();
+        score += WORM_BALANCING.killRewardScore; 
+        txtScore.innerText = `分數: ${score} / ${TARGET_SCORE}`;
+        
+        if (score >= TARGET_SCORE) {
+            checkGameOver(1);
+        }
+    }
+
+    renderUI();
+    initGrid();
+    window.addEventListener('resize', initGrid);
     requestAnimationFrame(gameLoop);
 </script>
 </body>
