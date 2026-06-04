@@ -63,6 +63,9 @@
         /* 狀態文字顯示 */
         .info-text { color: #FFF; font-size: 3vh; font-weight: bold; margin-left: 2vw; white-space: nowrap;}
         #btn-next { background-color: #FF9800; display: none; width: auto; padding: 0 3vw; font-size: 2.5vh; margin-left: auto;}
+        
+        /* ⭐ 新增的重新開始按鈕樣式 */
+        #btn-restart { background-color: #E53935; display: none; width: auto; padding: 0 3vw; font-size: 2.5vh; margin-left: auto;}
 
         /* 田埔與網格系統 */
         .row {
@@ -248,6 +251,7 @@
         <div class="info-text" id="txt-nutrient">養分: 150</div>
         
         <div class="select-btn" id="btn-next">結束關卡</div>
+        <div class="select-btn" id="btn-restart">重新開始</div>
     </div>
 
     <div id="ghost-veg"></div>
@@ -291,6 +295,7 @@
     const txtScore = document.getElementById('txt-score');
     const txtNutrient = document.getElementById('txt-nutrient');
     const btnNext = document.getElementById('btn-next');
+    const btnRestart = document.getElementById('btn-restart'); // ⭐ 取得重新開始按鈕
 
     let selectedType = null; 
     let veggies = []; 
@@ -306,7 +311,7 @@
     let screenWidth, cellWidth;
 
     function renderUI() {
-        txtScore.innerText = `分數: 0 / ${TARGET_SCORE}`;
+        txtScore.innerText = `分數: ${score} / ${TARGET_SCORE}`;
         txtNutrient.innerText = `養分: ${nutrientCount}`;
         
         // 用靜態字串對應 UI 卡片名稱，不和畫面上的圖片文字衝突
@@ -460,15 +465,19 @@
         });
     }
 
+    // ⭐ 修改：判定輸贏時的按鈕顯示逻辑
     function checkGameOver(result) {
         gameState = result === 1 ? 'WIN' : 'GAMEOVER';
         gameResult = result;
-        btnNext.innerText = result === 1 ? "通關！傳回App" : "失敗！傳回App";
-        btnNext.style.display = 'flex';
         
         if(result === 1) {
+            btnNext.innerText = "通關！傳回App";
+            btnNext.style.display = 'flex';
+            btnRestart.style.display = 'none';
             alert(`恭喜通關！獲得 ${TARGET_SCORE} 分！`);
         } else {
+            btnNext.style.display = 'none';
+            btnRestart.style.display = 'flex'; // 失敗時只顯示「重新開始」按鈕
             alert("守護失敗！菜蟲突破防線了！");
         }
     }
@@ -480,6 +489,52 @@
             alert("回傳至 App Inventor 的數值為: " + gameResult); 
         }
     });
+
+    // ⭐ 新增：點擊重新開始按鈕後的重設邏輯
+    btnRestart.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetGame();
+    });
+
+    // ⭐ 新增：重設整個遊戲狀態與清除元素的函式
+    function resetGame() {
+        // 1. 清除所有畫面上的植物、菜蟲、種子、結晶和水窪
+        veggies.forEach(v => v.el.remove());
+        worms.forEach(w => w.el.remove());
+        seeds.forEach(s => s.el.remove());
+        puddles.forEach(p => p.el.remove());
+        nutrients.forEach(n => n.remove());
+
+        // 2. 清空陣列
+        veggies = [];
+        worms = [];
+        seeds = [];
+        puddles = [];
+        nutrients = [];
+
+        // 3. 恢復數據狀態
+        score = 0;
+        nutrientCount = INIT_NUTRIENT;
+        selectedType = null;
+        gameState = 'PLAYING';
+        gameResult = 0;
+
+        // 4. 隱藏按鈕與重置UI
+        btnRestart.style.display = 'none';
+        btnNext.style.display = 'none';
+        document.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        ghostVeg.style.display = 'none';
+        
+        renderUI();
+        initGrid();
+
+        // 5. 重置計時器，避免一開始就直接暴走跑出菜蟲
+        lastTime = performance.now();
+        lastWormSpawn = performance.now();
+        
+        // 重啟遊戲循環
+        requestAnimationFrame(gameLoop);
+    }
 
     let lastTime = performance.now();
     let lastWormSpawn = 0;
