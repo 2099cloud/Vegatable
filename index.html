@@ -471,7 +471,7 @@
         gameResult = result;
         
         if(result === 1) {
-            btnNext.innerText = "通關！傳回App";
+            btnNext.innerText = "回到故事";
             btnNext.style.display = 'flex';
             btnRestart.style.display = 'none';
             alert(`恭喜通關！獲得 ${TARGET_SCORE} 分！`);
@@ -485,8 +485,8 @@
     btnNext.addEventListener('click', () => {
         if (window.AppInventor) { 
             window.AppInventor.setWebViewString(gameResult.toString()); 
-        } else { 
-            alert("回傳至 App Inventor 的數值為: " + gameResult); 
+        } /*else { 
+            alert("回傳至 App Inventor 的數值為: " + gameResult); */
         }
     });
 
